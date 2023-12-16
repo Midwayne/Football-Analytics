@@ -1,0 +1,499 @@
+---
+title: "Football Analytics"
+output: html_notebook
+---
+
+# **Installing packages**
+
+-   StatsBomb - For match event data
+
+-   soccermatics - Pitch plots
+
+-   ggsoccer - Pitch plots
+
+```{r}
+install.packages("ggsoccer")
+install.packages("tidyverse")
+install.packages("ggplot2")
+install.packages("here")
+
+install.packages("devtools")
+install.packages("remotes")
+
+devtools::install_github("cran/SDMTools")
+devtools::install_github("statsbomb/StatsBombR")
+devtools::install_github("jogall/soccermatics")
+
+
+```
+
+```{r}
+library(ggsoccer)
+library(tidyverse)
+library(here)
+library(ggplot2)
+library(StatsBombR)
+library(soccermatics)
+```
+
+# **Data and Pre-processing**
+
+## View all the competitions available in the StatsBomb dataset (Free edition)
+
+```{r}
+FreeCompetitions()
+```
+
+## Selecting FIFA World Cup 2022
+
+```{r}
+comps <- FreeCompetitions() %>%
+filter(competition_id==43 & season_name=="2022")
+comps
+```
+
+## All the match event data available for this tournament
+
+```{r}
+matches <- FreeMatches(Competitions = comps)
+matches
+```
+
+## Choosing the World Cup Finals 2022
+
+```{r}
+events <- get.matchFree(matches[10,])
+events
+```
+
+## Join all the data for this match
+
+```{r}
+cleanevents = allclean(events)
+cleanevents
+```
+
+## Identify player
+
+```{r}
+# Converting player name for representation purpose
+cleanevents <- cleanevents %>%
+  mutate(player.name = ifelse(player.name == 'Lionel Andrés Messi Cuccittini', 'Lionel Messi', player.name))
+
+# Player credentials
+player_id <- 5503
+player_name <- 'Lionel Messi'
+```
+
+# Passes
+
+## Pre-processing - Retrieving location based on period
+
+```{r}
+process_period <- function(half) {
+  filtered_events <- cleanevents %>%
+  filter(type.name == 'Pass' & period==half & player.id==player_id) %>%
+  select(location, pass.end_location)
+
+  locationX <- lapply(filtered_events$location, function(x) x[[1]])
+  locationY <- lapply(filtered_events$location, function(x) x[[2]])
+  endLocationX <- lapply(filtered_events$pass.end_location, function(x) x[[1]])
+  endLocationY <- lapply(filtered_events$pass.end_location, function(x) x[[2]])
+
+  filtered_passes <- data.frame(
+    LocationX = unlist(locationX),
+    LocationY = unlist(locationY),
+    EndLocationX = unlist(endLocationX),
+    EndLocationY = unlist(endLocationY)
+  )
+
+  return (filtered_passes)
+}
+```
+
+## First Half (Normal time)
+
+```{r}
+filtered_passes <- process_period(1)
+
+to_statsbomb <- rescale_coordinates(from = pitch_opta, to = pitch_statsbomb)
+
+passes_rescaled <- data.frame(x  = to_statsbomb$x(filtered_passes$LocationX),
+                              y  = to_statsbomb$y(filtered_passes$LocationY),
+                              x2 = to_statsbomb$x(filtered_passes$EndLocationX),
+                              y2 = to_statsbomb$y(filtered_passes$EndLocationY))
+
+ggplot(passes_rescaled) +
+  annotate_pitch(dimensions = pitch_statsbomb, , colour = "white", fill   = "springgreen4") +
+  geom_segment(aes(x = x, y = y, xend = x2, yend = y2),
+               colour = "coral",
+               arrow = arrow(length = unit(0.25, "cm"),
+                             type = "closed")) +
+   geom_point(aes(x = x, y = y),
+             colour = "yellow",
+             size = 4) +
+  theme_pitch() +
+  direction_label(x_label = 60) +
+  theme(panel.background = element_rect(fill = "springgreen4"))+
+  ggtitle("PassMap",
+          "Messi in the First Half (Normal time)")
+```
+
+## Second Half (Normal time)
+
+```{r}
+filtered_passes <- process_period(2)
+to_statsbomb <- rescale_coordinates(from = pitch_opta, to = pitch_statsbomb)
+
+passes_rescaled <- data.frame(x  = to_statsbomb$x(filtered_passes$LocationX),
+                              y  = to_statsbomb$y(filtered_passes$LocationY),
+                              x2 = to_statsbomb$x(filtered_passes$EndLocationX),
+                              y2 = to_statsbomb$y(filtered_passes$EndLocationY))
+
+ggplot(passes_rescaled) +
+  annotate_pitch(dimensions = pitch_statsbomb, , colour = "white", fill   = "springgreen4") +
+  geom_segment(aes(x = x, y = y, xend = x2, yend = y2),
+               colour = "coral",
+               arrow = arrow(length = unit(0.25, "cm"),
+                             type = "closed")) +
+   geom_point(aes(x = x, y = y),
+             colour = "yellow",
+             size = 4) +
+  theme_pitch() +
+  direction_label(x_label = 60) +
+  theme(panel.background = element_rect(fill = "springgreen4"))+
+  ggtitle("PassMap",
+          "Messi in the Second Half (Normal time)")
+```
+
+## First Half (Extra time)
+
+```{r}
+filtered_passes <- process_period(3)
+
+to_statsbomb <- rescale_coordinates(from = pitch_opta, to = pitch_statsbomb)
+
+passes_rescaled <- data.frame(x  = to_statsbomb$x(filtered_passes$LocationX),
+                              y  = to_statsbomb$y(filtered_passes$LocationY),
+                              x2 = to_statsbomb$x(filtered_passes$EndLocationX),
+                              y2 = to_statsbomb$y(filtered_passes$EndLocationY))
+
+ggplot(passes_rescaled) +
+  annotate_pitch(dimensions = pitch_statsbomb, , colour = "white", fill   = "springgreen4") +
+  geom_segment(aes(x = x, y = y, xend = x2, yend = y2),
+               colour = "coral",
+               arrow = arrow(length = unit(0.25, "cm"),
+                             type = "closed")) +
+   geom_point(aes(x = x, y = y),
+             colour = "yellow",
+             size = 4) +
+  theme_pitch() +
+  direction_label(x_label = 60) +
+  theme(panel.background = element_rect(fill = "springgreen4"))+
+  ggtitle("PassMap",
+          "Messi in the First Half (Extra time)")
+```
+
+## Second Half (Extra time)
+
+```{r}
+filtered_passes <- process_period(4)
+
+to_statsbomb <- rescale_coordinates(from = pitch_opta, to = pitch_statsbomb)
+
+passes_rescaled <- data.frame(x  = to_statsbomb$x(filtered_passes$LocationX),
+                              y  = to_statsbomb$y(filtered_passes$LocationY),
+                              x2 = to_statsbomb$x(filtered_passes$EndLocationX),
+                              y2 = to_statsbomb$y(filtered_passes$EndLocationY))
+
+ggplot(passes_rescaled) +
+  annotate_pitch(dimensions = pitch_statsbomb, , colour = "white", fill   = "springgreen4") +
+  geom_segment(aes(x = x, y = y, xend = x2, yend = y2),
+               colour = "coral",
+               arrow = arrow(length = unit(0.25, "cm"),
+                             type = "closed")) +
+   geom_point(aes(x = x, y = y),
+             colour = "yellow",
+             size = 4) +
+  theme_pitch() +
+  direction_label(x_label = 60) +
+  theme(panel.background = element_rect(fill = "springgreen4"))+
+  ggtitle("PassMap",
+          "Messi in the Second Half (Extra time)")
+```
+
+## Pass Position
+
+### Average
+
+```{r}
+cleanevents %>%
+  filter(player.id==player_id & type.name == "Pass") %>%
+  soccerTransform(method='statsbomb') %>%
+  soccerPositionMap(id = "player.name", x = "location.x", y = "location.y",
+                    fill1 = "blue",
+                    arrow = "r",
+                    theme = "grass",
+                    title = "Average Pass Postition",
+                    subtitle='Messi vs France')
+
+```
+
+### Favourite
+
+```{r}
+ cleanevents %>%
+  filter(player.id == player_id) %>%
+  soccerPassmap(fill = "lightblue", arrow = "r", theme='grass',
+                title = "Highest Pass Position")
+```
+
+## Comparison
+
+```{r}
+cleanevents %>%
+  filter(team.name=='Argentina' & type.name == "Pass") %>%
+  soccerTransform(method='statsbomb') %>%
+  soccerPositionMap(id = "player.name", x = "location.x", y = "location.y",
+                    fill1 = "blue",
+                    arrow = "r",
+                    theme = "grass",
+                    title = "Average Pass Postition",
+                    subtitle='Argentina')
+
+```
+
+# Shots
+
+## Comparison among teams
+
+```{r}
+summary <- cleanevents %>%
+  group_by("Team"=cleanevents$team.name) %>%
+  summarise(shots = sum(type.name=="Shot", na.rm = TRUE))
+summary
+```
+
+## Comparison among Argentinian players
+
+```{r}
+filtered_events <- cleanevents %>%
+  filter(team.name == 'Argentina' & type.name == 'Shot') %>%
+  select(player.name)
+
+shots <- filtered_events %>%
+  group_by(player.name) %>%
+  summarise(shots = n())
+
+print(shots)
+```
+
+## Messi's ShotMap
+
+-   23' (P)
+-   108'
+-   Shootouts
+
+```{r}
+cleanevents %>%
+  filter(player.id==player_id) %>%
+  soccerTransform(method='statsbomb') %>%
+  soccerShotmap(theme = "grass", title = "ShotMap",
+                subtitle = "Shots taken by Messi")
+```
+
+## Messi's Average ShotMap
+
+```{r}
+cleanevents %>%
+  filter(player.id==player_id & type.name == "Shot") %>%
+  soccerTransform(method='statsbomb') %>%
+  soccerPositionMap(id = "player.name", x = "location.x", y = "location.y",
+                    fill1 = "blue",
+                    arrow = "r",
+                    theme = "grass",
+                    title = "Average Shot Postition",
+                    subtitle = 'Messi vs France')
+```
+
+# Movement
+
+## HeatMap
+
+```{r}
+cleanevents %>%
+  filter(player.id==player_id) %>%
+  soccerTransform(method='statsbomb') %>%
+  soccerHeatmap(x = "location.x", y = "location.y", xBins = 21, yBins = 14,
+                title = "HeatMap",
+                subtitle = 'Messi vs France')
+```
+
+# Model
+
+## Pre-processing
+
+```{r}
+data <- cleanevents %>%
+  select(duration, player.name)
+```
+
+```{r}
+filtered_events_model <- cleanevents %>%
+  filter(team.name=='Argentina') %>%
+  select(duration, player.name)
+
+data_clean <- filtered_events_model[complete.cases(filtered_events_model$duration, filtered_events_model$player.name), ]
+
+print(data_clean)
+```
+
+```{r}
+duration_data <- data.frame(total_duration = double(), player_name = character(), stringsAsFactors = FALSE)
+```
+
+```{r}
+process_period <- function(player_name) {
+  filtered_events <- data_clean %>%
+  filter(player.name==player_name) %>%
+  select(duration)
+
+  total_duration_player <- sum(filtered_events$duration, na.rm = TRUE)
+
+  new_row <- data.frame(total_duration = total_duration_player, player_name = player_name, stringsAsFactors = FALSE)
+  return (new_row)
+}
+```
+
+```{r}
+unique_players <- unique(data_clean$player.name)
+
+
+for (player_name in unique_players) {
+  new_row <- process_period(player_name)
+  duration_data <- rbind(duration_data, new_row)
+
+}
+
+print(duration_data)
+```
+
+```{r}
+#Total shots by each player
+shots <- cleanevents %>%
+  filter(team.name == 'Argentina' & type.name == 'Shot') %>%
+  group_by(player.name) %>%
+  summarise(shots = n())
+
+# Create a data frame with all player names
+all_players <- data.frame(player.name = unique(cleanevents$player.name[cleanevents$team.name == 'Argentina']))
+
+# Left join with shots summary, replace NA with 0
+merged_data <- left_join(all_players, shots, by = "player.name") %>%
+  mutate(shots = ifelse(is.na(shots), 0, shots))
+
+# Print the result
+print(merged_data)
+
+```
+
+```{r}
+# Assuming merged_data and duration_data are your data frames
+# merged_data contains columns player.name and shots
+# duration_data contains columns player_name and total_duration
+
+# Left join merged_data with duration_data
+final_merged_data <- left_join(merged_data, duration_data, by = c("player.name" = "player_name"))
+
+# If needed, replace NA values in shots and total_duration with 0
+final_merged_data$shots[is.na(final_merged_data$shots)] <- 0
+final_merged_data$total_duration[is.na(final_merged_data$total_duration)] <- 0
+
+# Print the final merged data
+print(final_merged_data)
+
+
+```
+
+```{r}
+# Filter and count passes
+passes <- cleanevents %>%
+  filter(team.name == 'Argentina' & type.name == 'Pass') %>%
+  group_by(player.name) %>%
+  summarise(passes = n())
+
+# Merge with the existing final_merged_data
+final_merged_data <- left_join(final_merged_data, passes, by = c("player.name" = "player.name"))
+
+# If needed, replace NA values in passes with 0
+final_merged_data$passes[is.na(final_merged_data$passes)] <- 0
+
+# Print the final merged data
+print(final_merged_data)
+
+```
+
+## k-means Clustering
+
+```{r}
+selected_columns <- final_merged_data[, c("shots", "total_duration", "passes")]
+
+# Standardize the data
+scaled_data <- scale(selected_columns)
+
+k <- 3  
+kmeans_result <- kmeans(scaled_data, centers = k, nstart = 20)
+
+# Add the cluster assignments back to the original data frame
+final_merged_data$cluster <- kmeans_result$cluster
+
+# Print the cluster centroids
+print(kmeans_result$centers)
+
+# View the distribution of players in each cluster
+table(final_merged_data$cluster)
+
+```
+
+```{r}
+# Scatter plot of total_duration against shots, colored by cluster, with player names
+ggplot(final_merged_data, aes(x = total_duration, y = shots, color = factor(cluster), label = player.name)) +
+  geom_point(aes(size = passes)) +
+  geom_text(nudge_x = 0.2, nudge_y = 0.2, size = 3) +  # Adjust nudge values as needed
+  labs(title = "K-Means Clustering of Players", x = "Total Duration", y = "Shots", color = "Cluster") +
+  theme_minimal()
+
+# Draw circles around each cluster
+cluster_centers <- as.data.frame(kmeans_result$centers[, c("total_duration", "shots")])
+```
+
+```{r}
+
+ggplot(final_merged_data, aes(x = passes, y = shots, color = factor(cluster), label = player.name)) +
+  geom_point(aes(size = total_duration)) +
+  geom_text(nudge_x = 0.2, nudge_y = 0.2, size = 3) +  # Adjust nudge values as needed
+  labs(title = "K-Means Clustering of Players", x = "Passes", y = "Shots", color = "Cluster") +
+  theme_minimal()
+
+
+cluster_centers <- as.data.frame(kmeans_result$centers[, c("passes", "shots")])
+```
+
+```{r}
+library(plotly)
+
+# Create a 3D scatter plot
+p <- plot_ly(final_merged_data, x = ~total_duration, y = ~shots, z = ~passes, color = ~factor(cluster)) %>%
+  add_markers(size = 2)  %>%
+
+# Add labels for player names
+  add_text(text = ~player.name, 
+           showlegend = FALSE,
+           hoverinfo = "text",
+           size = 1)
+# Show the plot
+p
+
+
+
+```
